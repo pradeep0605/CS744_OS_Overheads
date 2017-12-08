@@ -342,6 +342,7 @@
 333 common	os_overheads	sys_os_overheads_control
 334 common  list_apps	sys_list_apps
 335	common	clear_apps sys_clear_apps
+336 common	add_stats	sys_add_app
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact

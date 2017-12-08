@@ -27,6 +27,8 @@
 
 #define CREATE_TRACE_POINTS
 #include <asm/trace/exceptions.h>
+#include <linux/os_overheads.h>
+#include <linux/os_overheads.h>
 
 /*
  * Returns 0 if mmiotrace is disabled, or if the fault is not
@@ -1248,6 +1250,22 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 	u32 pkey;
 
+	oo_stats_t *stats = NULL;                    
+	stats = indexof_process_stats(current->comm);
+	record_start_event(stats, OO_PGFAULT_EVENT);
+	/* Only one of the below two (major / minor) will be used. As we don't know 
+	 * which one yet, we'll start the timing for both
+	 */
+	record_start_event(stats, OO_PGFAULT_MINOR_EVENT);
+	record_start_event(stats, OO_PGFAULT_MAJOR_EVENT);
+
+	/* Reduce the entry count by two as we're only entering once, but starting
+	 * three event recordings
+	 */
+	if (stats) {
+		stats->kernel_entry -= 2;
+	}
+
 	tsk = current;
 	mm = tsk->mm;
 
@@ -1257,8 +1275,12 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 */
 	prefetchw(&mm->mmap_sem);
 
-	if (unlikely(kmmio_fault(regs, address)))
+	if (unlikely(kmmio_fault(regs, address))) {
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
+	}
 
 	/*
 	 * We fault-in kernel-space virtual memory on-demand. The
@@ -1275,35 +1297,58 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 */
 	if (unlikely(fault_in_kernel_space(address))) {
 		if (!(error_code & (X86_PF_RSVD | X86_PF_USER | X86_PF_PROT))) {
-			if (vmalloc_fault(address) >= 0)
+			if (vmalloc_fault(address) >= 0) {
+				record_end_event(stats, OO_PGFAULT_EVENT);
+				dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+				dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 				return;
+			}
 		}
 
 		/* Can handle a stale RO->RW TLB: */
-		if (spurious_fault(error_code, address))
+		if (spurious_fault(error_code, address)) {
+			record_end_event(stats, OO_PGFAULT_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);	
 			return;
+		}
 
 		/* kprobes don't want to hook the spurious faults: */
-		if (kprobes_fault(regs))
+		if (kprobes_fault(regs)) {
+			record_end_event(stats, OO_PGFAULT_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 			return;
+		}
 		/*
 		 * Don't take the mm semaphore here. If we fixup a prefetch
 		 * fault we could otherwise deadlock:
 		 */
 		bad_area_nosemaphore(regs, error_code, address, NULL);
-
+		
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
 	/* kprobes don't want to hook the spurious faults: */
-	if (unlikely(kprobes_fault(regs)))
+	if (unlikely(kprobes_fault(regs))) {
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);	
 		return;
+	}
 
 	if (unlikely(error_code & X86_PF_RSVD))
 		pgtable_bad(regs, error_code, address);
 
 	if (unlikely(smap_violation(error_code, regs))) {
 		bad_area_nosemaphore(regs, error_code, address, NULL);
+		
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
@@ -1313,6 +1358,10 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	 */
 	if (unlikely(faulthandler_disabled() || !mm)) {
 		bad_area_nosemaphore(regs, error_code, address, NULL);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
@@ -1359,6 +1408,10 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		if (!(error_code & X86_PF_USER) &&
 		    !search_exception_tables(regs->ip)) {
 			bad_area_nosemaphore(regs, error_code, address, NULL);
+
+			record_end_event(stats, OO_PGFAULT_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 			return;
 		}
 retry:
@@ -1375,12 +1428,20 @@ retry:
 	vma = find_vma(mm, address);
 	if (unlikely(!vma)) {
 		bad_area(regs, error_code, address);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 	if (likely(vma->vm_start <= address))
 		goto good_area;
 	if (unlikely(!(vma->vm_flags & VM_GROWSDOWN))) {
 		bad_area(regs, error_code, address);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 	if (error_code & X86_PF_USER) {
@@ -1392,11 +1453,19 @@ retry:
 		 */
 		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp)) {
 			bad_area(regs, error_code, address);
+			
+			record_end_event(stats, OO_PGFAULT_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 			return;
 		}
 	}
 	if (unlikely(expand_stack(vma, address))) {
 		bad_area(regs, error_code, address);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
@@ -1407,6 +1476,10 @@ retry:
 good_area:
 	if (unlikely(access_error(error_code, vma))) {
 		bad_area_access_error(regs, error_code, address, vma);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
@@ -1444,17 +1517,30 @@ good_area:
 		}
 
 		/* User mode? Just return to handle the fatal exception */
-		if (flags & FAULT_FLAG_USER)
+		if (flags & FAULT_FLAG_USER) {
+
+			record_end_event(stats, OO_PGFAULT_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 			return;
+		}
 
 		/* Not returning to user mode? Handle exceptions or die: */
 		no_context(regs, error_code, address, SIGBUS, BUS_ADRERR);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
 	up_read(&mm->mmap_sem);
 	if (unlikely(fault & VM_FAULT_ERROR)) {
 		mm_fault_error(regs, error_code, address, &pkey, fault);
+
+		record_end_event(stats, OO_PGFAULT_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
@@ -1471,6 +1557,25 @@ good_area:
 	}
 
 	check_v8086_mode(regs, address, tsk);
+	if (fault & VM_FAULT_MAJOR) {
+		if (stats) {
+			record_end_event(stats, OO_PGFAULT_MAJOR_EVENT);
+			/* Reduce the counter to correct the mistake we did in the beggining
+			 * of the function */
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
+			/* update the pagefault timers as well */
+			stats->timers[OO_PGFAULT_EVENT] += (stats->end_time - stats->start_time);
+		}
+	} else {
+		if (stats) {
+			record_end_event(stats, OO_PGFAULT_MINOR_EVENT);
+			/* Reduce the counter to correct the mistake we did in the beggining
+			 * of the function */
+			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
+			/* update the pagefault timers as well */
+			stats->timers[OO_PGFAULT_EVENT] += (stats->end_time - stats->start_time);
+		}
+	}
 }
 NOKPROBE_SYMBOL(__do_page_fault);
 

@@ -942,5 +942,7 @@ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
 			  unsigned mask, struct statx __user *buffer);
 asmlinkage long sys_os_overheads_control(int val);
 asmlinkage long sys_list_apps(int is_stat);
-asmlinkage long sys_clear_apps(char *name, int is_stat);
+asmlinkage long sys_clear_apps(const char __user** name, int is_stat);
+asmlinkage long sys_add_app(char **name);
 #endif
+

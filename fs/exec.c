@@ -71,6 +71,8 @@
 #include "internal.h"
 
 #include <trace/events/sched.h>
+#include <linux/os_overheads.h>
+
 
 int suid_dumpable = 0;
 
@@ -1365,6 +1367,17 @@ void setup_new_exec(struct linux_binprm * bprm)
 	 * depend on TIF_32BIT which is only updated in flush_thread() on
 	 * some architectures like powerpc
 	 */
+
+	if (current && current->real_parent && 
+			(indexof_process_stats(current->real_parent->comm) != NULL)) {
+		/* Add only if the process's stats do not exist already */
+		if (indexof_process_stats(current->comm) == NULL) {
+			if (!disable_stats_on_child) {
+				oo_register_process(current->comm);
+			}
+		}
+	}
+
 	current->mm->task_size = TASK_SIZE;
 
 	/* An exec changes our domain. We are no longer part of the thread

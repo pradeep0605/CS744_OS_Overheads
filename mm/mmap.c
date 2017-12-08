@@ -52,6 +52,7 @@
 #include <asm/mmu_context.h>
 
 #include "internal.h"
+#include <linux/os_overheads.h>
 
 #ifndef arch_mmap_check
 #define arch_mmap_check(addr, len, flags)	(0)
@@ -238,6 +239,11 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 	/* Ok, looks good - let it rip. */
 	if (do_brk(oldbrk, newbrk-oldbrk, &uf) < 0)
 		goto out;
+
+	if (enable_alloc_overhead_stats) {
+		record_alloc_event(indexof_process_stats(current->comm),
+			OO_ALLOC_REQ_FROM_USR_SPACE, newbrk - oldbrk);
+	}
 
 set_brk:
 	mm->brk = brk;
@@ -1494,12 +1500,23 @@ SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 {
 	struct file *file = NULL;
 	unsigned long retval;
+	oo_stats_t *stats = NULL;
+
+	stats = indexof_process_stats(current->comm);
+	record_start_event(stats, OO_MMAP_EVENT);
+
+	if (enable_alloc_overhead_stats) {
+		record_alloc_event(indexof_process_stats(current->comm),
+			OO_ALLOC_REQ_FROM_USR_SPACE, len);
+	}
 
 	if (!(flags & MAP_ANONYMOUS)) {
 		audit_mmap_fd(fd, flags);
 		file = fget(fd);
-		if (!file)
+		if (!file) {
+			record_end_event(stats, OO_MMAP_EVENT);
 			return -EBADF;
+		}
 		if (is_file_hugepages(file))
 			len = ALIGN(len, huge_page_size(hstate_file(file)));
 		retval = -EINVAL;
@@ -1510,8 +1527,10 @@ SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 		struct hstate *hs;
 
 		hs = hstate_sizelog((flags >> MAP_HUGE_SHIFT) & MAP_HUGE_MASK);
-		if (!hs)
+		if (!hs) {
+			record_end_event(stats, OO_MMAP_EVENT);
 			return -EINVAL;
+		}
 
 		len = ALIGN(len, huge_page_size(hs));
 		/*
@@ -1524,8 +1543,10 @@ SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 				VM_NORESERVE,
 				&user, HUGETLB_ANONHUGE_INODE,
 				(flags >> MAP_HUGE_SHIFT) & MAP_HUGE_MASK);
-		if (IS_ERR(file))
+		if (IS_ERR(file)) {
+			record_end_event(stats, OO_MMAP_EVENT);
 			return PTR_ERR(file);
+		}
 	}
 
 	flags &= ~(MAP_EXECUTABLE | MAP_DENYWRITE);
@@ -1534,6 +1555,7 @@ SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 out_fput:
 	if (file)
 		fput(file);
+	record_end_event(stats, OO_MMAP_EVENT);
 	return retval;
 }
 

@@ -29,6 +29,7 @@
 #include <asm/tlbflush.h>
 
 #include "internal.h"
+#include <linux/os_overheads.h>
 
 static pmd_t *get_old_pmd(struct mm_struct *mm, unsigned long addr)
 {
@@ -532,15 +533,32 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 	struct vm_userfaultfd_ctx uf = NULL_VM_UFFD_CTX;
 	LIST_HEAD(uf_unmap_early);
 	LIST_HEAD(uf_unmap);
+	oo_stats_t *stats = NULL;                    
 
-	if (flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE))
-		return ret;
+	if (enable_alloc_overhead_stats) {
+		if ((new_len - old_len) > 0) {
+			record_alloc_event(indexof_process_stats(current->comm),
+				OO_ALLOC_REQ_FROM_USR_SPACE, new_len - old_len);
+		}
+	}
 
-	if (flags & MREMAP_FIXED && !(flags & MREMAP_MAYMOVE))
-		return ret;
+	stats = indexof_process_stats(current->comm);
+	record_start_event(stats, OO_MREMAP_EVENT);
 
-	if (offset_in_page(addr))
+	if (flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE)) {
+		record_end_event(stats, OO_MREMAP_EVENT);
 		return ret;
+	}
+
+	if (flags & MREMAP_FIXED && !(flags & MREMAP_MAYMOVE)) {
+		record_end_event(stats, OO_MREMAP_EVENT);
+		return ret;
+	}
+
+	if (offset_in_page(addr)) {
+		record_end_event(stats, OO_MREMAP_EVENT);
+		return ret;
+	}
 
 	old_len = PAGE_ALIGN(old_len);
 	new_len = PAGE_ALIGN(new_len);
@@ -550,11 +568,15 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 	 * for DOS-emu "duplicate shm area" thing. But
 	 * a zero new-len is nonsensical.
 	 */
-	if (!new_len)
+	if (!new_len) {
+		record_end_event(stats, OO_MREMAP_EVENT);
 		return ret;
+	}
 
-	if (down_write_killable(&current->mm->mmap_sem))
+	if (down_write_killable(&current->mm->mmap_sem)) {
+		record_end_event(stats, OO_MREMAP_EVENT);
 		return -EINTR;
+	}
 
 	if (flags & MREMAP_FIXED) {
 		ret = mremap_to(addr, old_len, new_addr, new_len,
@@ -641,5 +663,7 @@ out:
 	userfaultfd_unmap_complete(mm, &uf_unmap_early);
 	mremap_userfaultfd_complete(&uf, addr, new_addr, old_len);
 	userfaultfd_unmap_complete(mm, &uf_unmap);
+
+	record_end_event(stats, OO_MREMAP_EVENT);
 	return ret;
 }
