@@ -215,7 +215,7 @@ force_sig_info_fault(int si_signo, int si_code, unsigned long address,
 	info.si_code	= si_code;
 	info.si_addr	= (void __user *)address;
 	if (fault & VM_FAULT_HWPOISON_LARGE)
-		lsb = hstate_index_to_shift(VM_FAULT_GET_HINDEX(fault)); 
+		lsb = hstate_index_to_shift(VM_FAULT_GET_HINDEX(fault));
 	if (fault & VM_FAULT_HWPOISON)
 		lsb = PAGE_SHIFT;
 	info.si_addr_lsb = lsb;
@@ -514,7 +514,7 @@ NOKPROBE_SYMBOL(vmalloc_fault);
 
 #ifdef CONFIG_CPU_SUP_AMD
 static const char errata93_warning[] =
-KERN_ERR 
+KERN_ERR
 "******* Your BIOS seems to not contain a fix for K8 errata #93\n"
 "******* Working around it, but it may cause SEGVs or burn power.\n"
 "******* Please consider a BIOS update.\n"
@@ -1247,13 +1247,21 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	struct task_struct *tsk;
 	struct mm_struct *mm;
 	int fault, major = 0;
+	char proc_name[100] = {0};
 	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 	u32 pkey;
+	oo_stats_t *stats = NULL;
 
-	oo_stats_t *stats = NULL;                    
-	stats = indexof_process_stats(current->comm);
+	get_task_comm(proc_name, current);
+
+	stats = indexof_process_stats(proc_name);
+	/*
+	oo_print("%s : %s : %d : stats = %p  current->comm = %s\n",
+		__FILE__, __func__, __LINE__, stats, proc_name);
+	*/
+
 	record_start_event(stats, OO_PGFAULT_EVENT);
-	/* Only one of the below two (major / minor) will be used. As we don't know 
+	/* Only one of the below two (major / minor) will be used. As we don't know
 	 * which one yet, we'll start the timing for both
 	 */
 	record_start_event(stats, OO_PGFAULT_MINOR_EVENT);
@@ -1309,7 +1317,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		if (spurious_fault(error_code, address)) {
 			record_end_event(stats, OO_PGFAULT_EVENT);
 			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
-			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);	
+			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 			return;
 		}
 
@@ -1325,7 +1333,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 		 * fault we could otherwise deadlock:
 		 */
 		bad_area_nosemaphore(regs, error_code, address, NULL);
-		
+
 		record_end_event(stats, OO_PGFAULT_EVENT);
 		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
 		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
@@ -1336,7 +1344,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 	if (unlikely(kprobes_fault(regs))) {
 		record_end_event(stats, OO_PGFAULT_EVENT);
 		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
-		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);	
+		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
 		return;
 	}
 
@@ -1345,7 +1353,7 @@ __do_page_fault(struct pt_regs *regs, unsigned long error_code,
 
 	if (unlikely(smap_violation(error_code, regs))) {
 		bad_area_nosemaphore(regs, error_code, address, NULL);
-		
+
 		record_end_event(stats, OO_PGFAULT_EVENT);
 		dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
 		dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);
@@ -1453,7 +1461,7 @@ retry:
 		 */
 		if (unlikely(address + 65536 + 32 * sizeof(unsigned long) < regs->sp)) {
 			bad_area(regs, error_code, address);
-			
+
 			record_end_event(stats, OO_PGFAULT_EVENT);
 			dec_event_counter(stats, OO_PGFAULT_MAJOR_EVENT);
 			dec_event_counter(stats, OO_PGFAULT_MINOR_EVENT);

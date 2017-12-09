@@ -187,11 +187,19 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *next;
 	unsigned long min_brk;
+	char proc_name[100] = {0};
 	bool populate;
 	LIST_HEAD(uf);
+	oo_stats_t *stats = NULL;
 
-	if (down_write_killable(&mm->mmap_sem))
+	get_task_comm(proc_name, current);
+	stats = indexof_process_stats(proc_name);
+	record_start_event(stats, OO_BRK_EVENT);
+
+	if (down_write_killable(&mm->mmap_sem)) {
+		record_end_event(stats, OO_BRK_EVENT);
 		return -EINTR;
+	}
 
 #ifdef CONFIG_COMPAT_BRK
 	/*
@@ -241,7 +249,12 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 		goto out;
 
 	if (enable_alloc_overhead_stats) {
-		record_alloc_event(indexof_process_stats(current->comm),
+		/*
+		oo_print("%s: %s : %d : recoding alloc event for process %s\n",
+			__FILE__, __func__, __LINE__, proc_name);
+		*/
+		get_task_comm(proc_name, current);
+		record_alloc_event(indexof_process_stats(proc_name),
 			OO_ALLOC_REQ_FROM_USR_SPACE, newbrk - oldbrk);
 	}
 
@@ -250,13 +263,18 @@ set_brk:
 	populate = newbrk > oldbrk && (mm->def_flags & VM_LOCKED) != 0;
 	up_write(&mm->mmap_sem);
 	userfaultfd_unmap_complete(mm, &uf);
-	if (populate)
+	if (populate) {
 		mm_populate(oldbrk, newbrk - oldbrk);
+	}
+
+	record_end_event(stats, OO_BRK_EVENT);
 	return brk;
 
 out:
 	retval = mm->brk;
 	up_write(&mm->mmap_sem);
+
+	record_end_event(stats, OO_BRK_EVENT);
 	return retval;
 }
 
@@ -1501,12 +1519,19 @@ SYSCALL_DEFINE6(mmap_pgoff, unsigned long, addr, unsigned long, len,
 	struct file *file = NULL;
 	unsigned long retval;
 	oo_stats_t *stats = NULL;
+	char proc_name[100] = {0};
 
-	stats = indexof_process_stats(current->comm);
+	get_task_comm(proc_name, current);
+	stats = indexof_process_stats(proc_name);
 	record_start_event(stats, OO_MMAP_EVENT);
 
 	if (enable_alloc_overhead_stats) {
-		record_alloc_event(indexof_process_stats(current->comm),
+		get_task_comm(proc_name, current);
+		/*
+		oo_print("%s: %s : %d : MMAP recoding alloc event for process %s\n",
+			__FILE__, __func__, __LINE__, proc_name);
+		*/
+		record_alloc_event(indexof_process_stats(proc_name),
 			OO_ALLOC_REQ_FROM_USR_SPACE, len);
 	}
 

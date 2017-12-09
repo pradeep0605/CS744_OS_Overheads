@@ -531,18 +531,20 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 	unsigned long charged = 0;
 	bool locked = false;
 	struct vm_userfaultfd_ctx uf = NULL_VM_UFFD_CTX;
+	char proc_name[100] = {0};
 	LIST_HEAD(uf_unmap_early);
 	LIST_HEAD(uf_unmap);
 	oo_stats_t *stats = NULL;                    
 
+	get_task_comm(proc_name, current);
 	if (enable_alloc_overhead_stats) {
 		if ((new_len - old_len) > 0) {
-			record_alloc_event(indexof_process_stats(current->comm),
+			record_alloc_event(indexof_process_stats(proc_name),
 				OO_ALLOC_REQ_FROM_USR_SPACE, new_len - old_len);
 		}
 	}
 
-	stats = indexof_process_stats(current->comm);
+	stats = indexof_process_stats(proc_name);
 	record_start_event(stats, OO_MREMAP_EVENT);
 
 	if (flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE)) {

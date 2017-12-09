@@ -1,3 +1,6 @@
-vim OS_Overheads/control.c
+vim OS_Overheads/control.c -O fs/exec.c
 vim include/linux/os_overheads.h -O mm/os_overheads.c
-vim arch/x86/entry/syscalls/syscall_64.tbl 
+vim arch/x86/entry/syscalls/syscall_64.tbl -O  
+vim arch/x86/mm/fault.c -O mm/page_alloc.c
+vim mm/mremap.c -O mm/mmap.c
+

@@ -3,11 +3,9 @@
 #include <linux/semaphore.h>
 #include <linux/mutex.h>
 
-// Track maximum of 100 processes
-char process_track_list[MAX_TRACK_SIZE][MAX_PROC_NAME_LEN];
 
 /* ALL golbals here */
-char process_track_list[MAX_TRACK_SIZE][MAX_PROC_NAME_LEN];
+// char process_track_list[MAX_TRACK_SIZE][MAX_PROC_NAME_LEN];
 oo_stats_t oo_statistics[MAX_TRACK_SIZE];
 oo_stats_t zeroed_stats;
 
@@ -113,7 +111,8 @@ inline void dec_event_counter(oo_stats_t *application, oo_event_t event) {
 	}
 	mutex_unlock(&oo_mutex);
 }
-int indexof_tracked_process(const char* proc_name);
+
+// int indexof_tracked_process(const char* proc_name);
 
 asmlinkage long sys_os_overheads_control(int val) {
 	/* For testing User->Kernel->User space context switch times */
@@ -171,7 +170,7 @@ asmlinkage long sys_list_apps(int is_stat) {
 	int len = 0;
 	unsigned long total_allocated = 0;
 
-	mutex_lock(&oo_mutex);
+	// mutex_lock(&oo_mutex);
 	if (is_stat == 0) {
 		for (i = 0; i < MAX_TRACK_SIZE; ++i) {
 			if (oo_statistics[i].name[0] != '\0') {
@@ -197,6 +196,8 @@ asmlinkage long sys_list_apps(int is_stat) {
 			"\n\t\tPGFLT Time      : %-11lu"
 			"\n\t\tPGFLT Minor Time: %-11lu"
 			"\n\t\tPGFLT Major Time: %-11lu"
+			"\n\t\tBRK Count			 : %-11lu"
+			"\n\t\tBRK Time        : %-11lu"
 			"\n\t\tMmap Count      : %-11lu"
 			"\n\t\tMmap Time       : %-11lu"
 			"\n\t\tMremap Count    : %-11lu"
@@ -210,6 +211,8 @@ asmlinkage long sys_list_apps(int is_stat) {
 			oo_statistics[i].timers[OO_PGFAULT_EVENT],
 			oo_statistics[i].timers[OO_PGFAULT_MINOR_EVENT],
 			oo_statistics[i].timers[OO_PGFAULT_MAJOR_EVENT],
+			oo_statistics[i].counters[OO_BRK_EVENT],
+			oo_statistics[i].timers[OO_BRK_EVENT],
 			oo_statistics[i].counters[OO_MMAP_EVENT],
 			oo_statistics[i].timers[OO_MMAP_EVENT],
 			oo_statistics[i].counters[OO_MREMAP_EVENT],
@@ -231,6 +234,7 @@ asmlinkage long sys_list_apps(int is_stat) {
 				sprintf(&str[len],
 					"O%-2d:%lu, ", j, oo_statistics[i].orders[j]);
 			}
+
 			pr_err("\t\tOrder: %s\n", str);
 			pr_err("\t\tTotal Kernel Allocation:"
 				" %lu (B), %lu (KB), %lu (MB) with PAGE_SIZE = %lu",
@@ -241,7 +245,7 @@ asmlinkage long sys_list_apps(int is_stat) {
 				oo_statistics[i].user_mem_req / (1024 * 1024));
 		}
 	}
-	mutex_unlock(&oo_mutex);
+	// mutex_unlock(&oo_mutex);
 	return 0xdeadbeef;
 }
 
@@ -251,7 +255,7 @@ asmlinkage long sys_clear_apps(const char __user** process_name, int
 	pr_err("\n======================Inside system calls (%s)"
 		"============================", __func__);
 	
-	mutex_lock(&oo_mutex);
+	// mutex_lock(&oo_mutex);
 	if (is_stats == FOR_STATISTICS) {
 		/* syscall is to remove all application stats information */
 		if (process_name == NULL) {
@@ -299,7 +303,7 @@ asmlinkage long sys_clear_apps(const char __user** process_name, int
 		}
 	}
 
-	mutex_unlock(&oo_mutex);
+	// mutex_unlock(&oo_mutex);
 
 	if (is_stats > 1) {
 		sys_list_apps(1);
@@ -318,31 +322,40 @@ int oo_register_process(const char *proc_name) {
 	printk(KERN_ALERT "In function %s with proc_name = %s\n", __func__,
 		 proc_name);
 
-	mutex_lock(&oo_mutex);
+	// mutex_lock(&oo_mutex);
 	/* Enable collection of statistics for the process `proc_name` */
 	i = 0;
 	stats = indexof_process_stats(proc_name);
 	if (stats == NULL) {
-		while(oo_statistics[i].name[0] != '\0') {
+		while(i < MAX_TRACK_SIZE && oo_statistics[i].name[0] != '\0') {
 			i++;
 		}
-		ret = strncpy(oo_statistics[i].name, proc_name,	MAX_PROC_NAME_LEN);
+		if (i < MAX_TRACK_SIZE) {
+			ret = strncpy(oo_statistics[i].name, proc_name,	MAX_PROC_NAME_LEN);
+		} else {
+			return -1;
+		}
 	}
-	mutex_unlock(&oo_mutex);
-	return 0xdeadbeef;
+	// mutex_unlock(&oo_mutex);
+	return 0;
 }
 
 asmlinkage long sys_add_app(char **proc_name)
 {
   char proc[MAX_PROC_NAME_LEN];
-	long ret;	
+	long ret, res;	
 	pr_err(KERN_ALERT "\n\n===========================\n"
 										"Inside system calls (%s)"
 										"\n============================\n\n", __func__);
 
 	if (proc_name != NULL) {
 		ret = strncpy_from_user(proc, proc_name[0], MAX_PROC_NAME_LEN);
-		return oo_register_process(proc);
+		res = oo_register_process(proc);
+		if (res < 0) {
+			pr_err("%s: %d: Error registering the process %s\n", __func__,
+				__LINE__, proc_name[0]);
+		}
+		return res;
 	} else {
 		pr_err("\n\nEmpty string passed from user space to system call (%s)\n\n",
 		__func__);
@@ -356,6 +369,7 @@ asmlinkage long sys_add_app(char **proc_name)
  *
  */
 
+/*
 inline int indexof_tracked_process(const char* proc_name)
 {
     unsigned int i;
@@ -365,6 +379,7 @@ inline int indexof_tracked_process(const char* proc_name)
     }
     return -1;
 }
+*/
 
 oo_stats_t* indexof_process_stats(const char* proc_name)
 {
@@ -373,9 +388,11 @@ oo_stats_t* indexof_process_stats(const char* proc_name)
         if (!strncmp(proc_name, oo_statistics[i].name, MAX_PROC_NAME_LEN))
             return &oo_statistics[i];
     }
+		// oo_print("Returning null from %s for process %s\n", __func__, proc_name);
     return NULL;
 }
 
+/*
 int is_process_being_tracked(const char* proc_name)
 {
     unsigned int i;
@@ -386,3 +403,4 @@ int is_process_being_tracked(const char* proc_name)
 
     return 0;
 }
+*/

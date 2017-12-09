@@ -4214,6 +4214,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
 	unsigned int alloc_flags = ALLOC_WMARK_LOW;
 	gfp_t alloc_mask; /* The gfp_t that was actually used for allocation */
 	struct alloc_context ac = { };
+	char proc_name[100] = {0};
 
 	gfp_mask &= gfp_allowed_mask;
 	alloc_mask = gfp_mask;
@@ -4245,10 +4246,6 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order, int preferred_nid,
 
 	page = __alloc_pages_slowpath(alloc_mask, order, &ac);
 
-	if (enable_alloc_overhead_stats) {
-		record_alloc_event(indexof_process_stats(current->comm),
-			OO_ALLOC_ORDER_EVENT, order);
-	}
 
 out:
 	if (memcg_kmem_enabled() && (gfp_mask & __GFP_ACCOUNT) && page &&
@@ -4257,8 +4254,16 @@ out:
 		page = NULL;
 	}
 
-	trace_mm_page_alloc(page, order, alloc_mask, ac.migratetype);
+	if (enable_alloc_overhead_stats) {
+		get_task_comm(proc_name, current);
+		oo_print("%s : %s : %d : Allocation order = %d proc_name = %s",
+			__FILE__, __func__, __LINE__, order, proc_name);
+		record_alloc_event(indexof_process_stats(proc_name),
+			OO_ALLOC_ORDER_EVENT, order);
+	}
 
+	trace_mm_page_alloc(page, order, alloc_mask, ac.migratetype);
+	
 	return page;
 }
 EXPORT_SYMBOL(__alloc_pages_nodemask);

@@ -1331,6 +1331,7 @@ void setup_new_exec(struct linux_binprm * bprm)
 	 * the final state of setuid/setgid/fscaps can be merged into the
 	 * secureexec flag.
 	 */
+	char parent_name[100] = {0};
 	bprm->secureexec |= bprm->cap_elevated;
 
 	if (bprm->secureexec) {
@@ -1368,8 +1369,28 @@ void setup_new_exec(struct linux_binprm * bprm)
 	 * some architectures like powerpc
 	 */
 
-	if (current && current->real_parent && 
+	current->mm->task_size = TASK_SIZE;
+
+	/* An exec changes our domain. We are no longer part of the thread
+	   group */
+	current->self_exec_id++;
+	flush_signal_handlers(current, 0);
+
+	if (current && current->real_parent) {
+		char name[100] = {0};
+		get_task_comm(name, current);
+		get_task_comm(parent_name, current->real_parent);
+		oo_print("%s : %s : %d : name of the process being execed via getter func"
+		"= %s and parent = %s \n",	__FILE__, __func__, __LINE__, current->comm,
+			parent_name);
+	}
+	
+
+	if (current && current->real_parent &&
 			(indexof_process_stats(current->real_parent->comm) != NULL)) {
+
+		oo_print("%s : %s : %d : name of the process being exec'ed = %s\n",
+			__FILE__, __func__, __LINE__, current->comm);
 		/* Add only if the process's stats do not exist already */
 		if (indexof_process_stats(current->comm) == NULL) {
 			if (!disable_stats_on_child) {
@@ -1377,13 +1398,6 @@ void setup_new_exec(struct linux_binprm * bprm)
 			}
 		}
 	}
-
-	current->mm->task_size = TASK_SIZE;
-
-	/* An exec changes our domain. We are no longer part of the thread
-	   group */
-	current->self_exec_id++;
-	flush_signal_handlers(current, 0);
 }
 EXPORT_SYMBOL(setup_new_exec);
 

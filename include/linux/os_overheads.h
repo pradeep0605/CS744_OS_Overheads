@@ -13,13 +13,15 @@
 #define MILLION (1000000)
 #define THOUSANDS (1000)
 
-#define CTXT_SWTCH_TIME (1500)
+// User->kernel ->User context switch time.
+#define CTXT_SWTCH_TIME (70)
 #define OO_MAX_ORDER 21
 
 enum oo_register_type {EMPTY = 0,
 	FOR_STATISTICS = 1};
 
 typedef enum event_type {
+	OO_BRK_EVENT,
 	OO_MMAP_EVENT,
 	OO_MREMAP_EVENT, 
 	OO_PGFAULT_EVENT,
