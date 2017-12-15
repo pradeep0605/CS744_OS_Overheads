@@ -1,0 +1,120 @@
+[88918.441142] 
+[88918.441142] 
+[88918.441142] ===========================
+[88918.441142] Inside system calls (sys_add_app)
+[88918.441142] ============================
+[88918.441142] 
+[88918.459581] In function oo_register_process with proc_name = java
+[88918.467135] 
+[88918.467135] 
+[88918.467135] ===========================
+[88918.467135] Inside system calls (sys_add_app)
+[88918.467135] ============================
+[88918.467135] 
+[88918.485574] In function oo_register_process with proc_name = python
+[88918.493172] OO: Enabled alloc overheads stats
+[88919.563470] In function oo_register_process with proc_name = setsid
+[88919.575807] In function oo_register_process with proc_name = bash
+[88928.723167] In function oo_register_process with proc_name = chmod
+[88939.969282]  =================== Listing all Statistics Enabled Applications =========================
+[88939.979727] java----------------------------#
+[88939.984598] 
+[88939.984598] 		Kernel Entry    : 379125     
+[88939.984598] 		Kernel Time     : 1136599932 
+[88939.984598] 		PGFLT Count     : 370156     
+[88939.984598] 		PGFLT Minor     : 370082     
+[88939.984598] 		PGFLT Major     : 0          
+[88939.984598] 		PGFLT Time      : 1099565877 
+[88939.984598] 		PGFLT Minor Time: 1103239434 
+[88939.984598] 		PGFLT Major Time: 0          
+[88939.984598] 		BRK Count			 : 30         
+[88939.984598] 		BRK Time        : 15793      
+[88939.984598] 		Mmap Count      : 8841       
+[88939.984598] 		Mmap Time       : 33006372   
+[88939.984598] 		Mremap Count    : 0          
+[88939.984598] 		Memap Time      : 0          
+[88939.984598] 		Total Time      : 1163138682 
+[88940.055804] 		Order: O0 :351070, O1 :17, O2 :0, O3 :233, O4 :0, O5 :0, O6 :0, O7 :0, O8 :0, 
+[88940.055804] 			O9 :4536, 
+[88940.068134] 		Total Kernel Allocation: 10958438400 (B), 10701600 (KB), 10450 (MB) with PAGE_SIZE = 4096
+[88940.068134] 		User Space Requested: 152364096172 (B), 148793062 (KB), 145305 (MB)
+[88940.086973] python----------------------------#
+[88940.092030] 
+[88940.092030] 		Kernel Entry    : 0          
+[88940.092030] 		Kernel Time     : 0          
+[88940.092030] 		PGFLT Count     : 0          
+[88940.092030] 		PGFLT Minor     : 0          
+[88940.092030] 		PGFLT Major     : 0          
+[88940.092030] 		PGFLT Time      : 0          
+[88940.092030] 		PGFLT Minor Time: 0          
+[88940.092030] 		PGFLT Major Time: 0          
+[88940.092030] 		BRK Count			 : 0          
+[88940.092030] 		BRK Time        : 0          
+[88940.092030] 		Mmap Count      : 0          
+[88940.092030] 		Mmap Time       : 0          
+[88940.092030] 		Mremap Count    : 0          
+[88940.092030] 		Memap Time      : 0          
+[88940.092030] 		Total Time      : 0          
+[88940.163217] 		Order: 
+[88940.165764] 		Total Kernel Allocation: 0 (B), 0 (KB), 0 (MB) with PAGE_SIZE = 4096
+[88940.165765] 		User Space Requested: 0 (B), 0 (KB), 0 (MB)
+[88940.180240] setsid----------------------------#
+[88940.185309] 
+[88940.185309] 		Kernel Entry    : 615        
+[88940.185309] 		Kernel Time     : 1307426    
+[88940.185309] 		PGFLT Count     : 516        
+[88940.185309] 		PGFLT Minor     : 516        
+[88940.185309] 		PGFLT Major     : 0          
+[88940.185309] 		PGFLT Time      : 1136841    
+[88940.185309] 		PGFLT Minor Time: 1136841    
+[88940.185309] 		PGFLT Major Time: 0          
+[88940.185309] 		BRK Count			 : 27         
+[88940.185309] 		BRK Time        : 14300      
+[88940.185309] 		Mmap Count      : 72         
+[88940.185309] 		Mmap Time       : 156285     
+[88940.185309] 		Mremap Count    : 0          
+[88940.185309] 		Memap Time      : 0          
+[88940.185309] 		Total Time      : 1350476    
+[88940.256496] 		Order: O0 :394, O1 :3, O2 :6, 
+[88940.261261] 		Total Kernel Allocation: 1736704 (B), 1696 (KB), 1 (MB) with PAGE_SIZE = 4096
+[88940.261262] 		User Space Requested: 64089585 (B), 62587 (KB), 61 (MB)
+[88940.277784] bash----------------------------#
+[88940.282648] 
+[88940.282648] 		Kernel Entry    : 1534       
+[88940.282648] 		Kernel Time     : 2819988    
+[88940.282648] 		PGFLT Count     : 1170       
+[88940.282648] 		PGFLT Minor     : 1170       
+[88940.282648] 		PGFLT Major     : 0          
+[88940.282648] 		PGFLT Time      : 2333040    
+[88940.282648] 		PGFLT Minor Time: 2332674    
+[88940.282648] 		PGFLT Major Time: 0          
+[88940.282648] 		BRK Count			 : 237        
+[88940.282648] 		BRK Time        : 206095     
+[88940.282648] 		Mmap Count      : 127        
+[88940.282648] 		Mmap Time       : 281219     
+[88940.282648] 		Mremap Count    : 0          
+[88940.282648] 		Memap Time      : 0          
+[88940.282648] 		Total Time      : 2927368    
+[88940.353834] 		Order: O0 :769, O1 :2, 
+[88940.357912] 		Total Kernel Allocation: 3166208 (B), 3092 (KB), 3 (MB) with PAGE_SIZE = 4096
+[88940.357913] 		User Space Requested: 103704483 (B), 101273 (KB), 98 (MB)
+[88940.374619] chmod----------------------------#
+[88940.379579] 
+[88940.379579] 		Kernel Entry    : 577        
+[88940.379579] 		Kernel Time     : 1091189    
+[88940.379579] 		PGFLT Count     : 489        
+[88940.379579] 		PGFLT Minor     : 489        
+[88940.379579] 		PGFLT Major     : 0          
+[88940.379579] 		PGFLT Time      : 948308     
+[88940.379579] 		PGFLT Minor Time: 948308     
+[88940.379579] 		PGFLT Major Time: 0          
+[88940.379579] 		BRK Count			 : 24         
+[88940.379579] 		BRK Time        : 10189      
+[88940.379579] 		Mmap Count      : 64         
+[88940.379579] 		Mmap Time       : 132692     
+[88940.379579] 		Mremap Count    : 0          
+[88940.379579] 		Memap Time      : 0          
+[88940.379579] 		Total Time      : 1131579    
+[88940.450775] 		Order: O0 :316, 
+[88940.454182] 		Total Kernel Allocation: 1294336 (B), 1264 (KB), 1 (MB) with PAGE_SIZE = 4096
+[88940.454183] 		User Space Requested: 56968520 (B), 55633 (KB), 54 (MB)
